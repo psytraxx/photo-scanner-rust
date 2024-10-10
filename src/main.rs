@@ -1,14 +1,13 @@
 use anyhow::{anyhow, Result};
-use base64::{prelude::BASE64_STANDARD, Engine};
 use futures::stream::{FuturesUnordered, Stream, StreamExt};
 use photo_scanner_rust::domain::ports::{Chat, FileMeta};
 use photo_scanner_rust::outbound;
+use photo_scanner_rust::outbound::image_provider::resize_and_base64encode_image;
 use photo_scanner_rust::outbound::openai::OpenAI;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
-use tokio::{fs::File, io::AsyncReadExt};
 use tracing::{error, info};
 
 // Function to list files in a directory and its subdirectories
@@ -39,7 +38,7 @@ fn list_files(directory: PathBuf) -> Pin<Box<dyn Stream<Item = Result<PathBuf>> 
 }
 
 // Function to extract EXIF data from a file
-async fn extract_image_description(path: &PathBuf) -> Result<String> {
+async fn extract_image_description(path: &Path) -> Result<String> {
     let chat: OpenAI = OpenAI::new();
 
     // Convert extension to lowercase and check if it is "jpg" or "jpeg"
@@ -55,15 +54,7 @@ async fn extract_image_description(path: &PathBuf) -> Result<String> {
         }
     }
 
-    let mut file = File::open(path).await?;
-
-    // Create a buffer to store the file content
-    let mut buffer = Vec::new();
-
-    // Read the entire file content into the buffer
-    file.read_to_end(&mut buffer).await?;
-
-    let image_base64 = BASE64_STANDARD.encode(buffer);
+    let image_base64 = resize_and_base64encode_image(path).unwrap();
 
     let folder_name: Option<String> = path
         .parent()

@@ -4,7 +4,7 @@ use crate::domain::ports::FileMeta;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use little_exif::{endian::Endian, exif_tag::ExifTag, metadata::Metadata};
-use tracing::{debug, info};
+use tracing::debug;
 
 const XP_COMMENT: u16 = 0x9C9C;
 
@@ -44,7 +44,7 @@ impl FileMeta for EXIF {
         match metadata.get_tag_by_hex(XP_COMMENT) {
             Some(tag) => {
                 let comment = ucs2_little_endian_to_string(&tag.value_as_u8_vec(&Endian::Little));
-                info!("Tag already exists: {:?}", comment);
+                debug!("Tag already exists: {:?}", comment);
             }
             None => {
                 debug!("Tag does not exist");

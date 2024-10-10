@@ -4,10 +4,12 @@ use crate::domain::ports::FileMeta;
 use anyhow::Result;
 use async_trait::async_trait;
 use tracing::debug;
-use xmp_toolkit::{OpenFileOptions, XmpFile, XmpMeta, XmpValue};
+use xmp_toolkit::{xmp_ns::DC, OpenFileOptions, XmpFile, XmpMeta};
 
 #[derive(Debug, Clone)]
 pub struct XMP {}
+
+const XMP_DESCRIPTION: &str = "description";
 
 #[async_trait]
 impl FileMeta for XMP {
@@ -43,11 +45,10 @@ impl FileMeta for XMP {
         };
 
         /*  xmp.iter(IterOptions::default()).for_each(|p| {
-            info!("{:?}", p);
+            debug!("{:?}", p);
         });*/
 
-        let new_value: XmpValue<String> = XmpValue::new(text.into());
-        xmp.set_property(xmp_toolkit::xmp_ns::DC, "description", &new_value)?;
+        xmp.set_localized_text(DC, XMP_DESCRIPTION, None, "x-default", text)?;
 
         xmp_file.put_xmp(&xmp)?;
         xmp_file.close();
