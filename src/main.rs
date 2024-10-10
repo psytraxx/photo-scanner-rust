@@ -1,14 +1,19 @@
 use anyhow::{anyhow, Result};
 use futures::stream::{FuturesUnordered, Stream, StreamExt};
-use photo_scanner_rust::domain::ports::{Chat, FileMeta};
-use photo_scanner_rust::outbound;
+use photo_scanner_rust::domain::ports::Chat;
+use photo_scanner_rust::outbound::exif::write_exif_description;
 use photo_scanner_rust::outbound::image_provider::resize_and_base64encode_image;
 use photo_scanner_rust::outbound::openai::OpenAI;
+use photo_scanner_rust::outbound::xmp::write_xmp_description;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::sync::Arc;
+use std::time::Instant;
 use tokio::sync::Semaphore;
-use tracing::{error, info};
+use tracing::{debug, error, info};
+
+// Maximum number of concurrent tasks for ollama multimodal API
+const MAX_CONCURRENT_TASKS: usize = 1;
 
 // Function to list files in a directory and its subdirectories
 fn list_files(directory: PathBuf) -> Pin<Box<dyn Stream<Item = Result<PathBuf>> + Send>> {
@@ -33,7 +38,6 @@ fn list_files(directory: PathBuf) -> Pin<Box<dyn Stream<Item = Result<PathBuf>> 
         }
     };
 
-    // Return the stream boxed to avoid type cycle issues
     Box::pin(stream)
 }
 
@@ -83,7 +87,7 @@ async fn main() -> Result<()> {
     // Traverse the files and print them
     let mut files_stream = list_files(path);
 
-    let semaphore = Arc::new(Semaphore::new(2)); // Limit to 2 concurrent tasks
+    let semaphore = Arc::new(Semaphore::new(MAX_CONCURRENT_TASKS));
     let mut tasks = FuturesUnordered::new();
 
     while let Some(file_result) = files_stream.next().await {
@@ -93,12 +97,15 @@ async fn main() -> Result<()> {
 
                 tasks.push(tokio::spawn(async move {
                     let permit = semaphore.acquire().await.unwrap();
+                    
+                    let start_time = Instant::now();
                     match extract_image_description(&file).await {
                         Ok(description) => {
-                            let xmp = outbound::xmp::XMP {};
-                            match xmp.write(&description, &file).await {
+                            let duration = Instant::now() - start_time;
+                            info!("Description for {}: {} Time taken: {:.2} seconds", &file.display(), &description, duration.as_secs_f64());
+                            match write_xmp_description(&description, &file) {
                                 Ok(_) => {
-                                    info!("Wrote XMP {} {}", &file.display(), &description)
+                                    debug!("Wrote XMP {} {}", &file.display(), &description)
                                 }
                                 Err(e) => {
                                     error!(
@@ -108,10 +115,9 @@ async fn main() -> Result<()> {
                                     )
                                 }
                             }
-                            let xmp = outbound::exif::EXIF {};
-                            match xmp.write(&description, &file).await {
+                            match write_exif_description(&description, &file) {
                                 Ok(_) => {
-                                    info!("Wrote EXIF {} {}", &file.display(), &description)
+                                    debug!("Wrote EXIF {} {}", &file.display(), &description)
                                 }
                                 Err(e) => {
                                     error!(
