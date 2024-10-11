@@ -41,23 +41,17 @@ fn list_files(directory: PathBuf) -> Pin<Box<dyn Stream<Item = Result<PathBuf>> 
     Box::pin(stream)
 }
 
+// Function to check if the path has a valid JPEG extension
+fn is_jpeg(path: &Path) -> bool {
+    match path.extension().and_then(|ext| ext.to_str()) {
+        Some(ext) => matches!(ext.to_ascii_lowercase().as_str(), "jpg" | "jpeg"),
+        None => false, // No extension present
+    }
+}
+
 // Function to extract EXIF data from a file
 async fn extract_image_description(path: &Path, persons: &[String]) -> Result<String> {
     let chat: OpenAI = OpenAI::new();
-
-    // Convert extension to lowercase and check if it is "jpg" or "jpeg"
-    match path
-        .extension()
-        .and_then(|ext| ext.to_str())
-        .map(|ext| ext.to_lowercase())
-    {
-        Some(ext) if ext == "jpg" || ext == "jpeg" => {}
-        _ => {
-            // If the file is not a JPEG/JPG, return Ok(None)
-            return Err(anyhow!("Not a JPEG file"));
-        }
-    }
-
     let image_base64 = resize_and_base64encode_image(path).unwrap();
 
     let folder_name: Option<String> = path
@@ -92,6 +86,11 @@ async fn main() -> Result<()> {
     while let Some(file_result) = files_stream.next().await {
         match file_result {
             Ok(path) => {
+                if !is_jpeg(&path) {
+                    // Skip files that are not JPEG
+                    continue;
+                }
+
                 let semaphore = Arc::clone(&semaphore);
 
                 tasks.push(tokio::spawn(async move {
