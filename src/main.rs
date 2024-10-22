@@ -141,9 +141,9 @@ async fn main() -> Result<()> {
                 &persons
             );
 
-            if let Err(e) = chat.get_embedding(&description).await {
+            /* if let Err(e) = chat.get_embedding(&description).await {
                 error!("Error getting embedding for {}: {}", &path.display(), e);
-            }
+            } */
 
             if let Err(e) = write_xmp_description(&description, &path) {
                 error!(
