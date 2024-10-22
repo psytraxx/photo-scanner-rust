@@ -2,7 +2,7 @@ use anyhow::{anyhow, Result};
 use futures::future::join_all;
 use futures::stream::{Stream, StreamExt};
 use photo_scanner_rust::domain::ports::Chat;
-use photo_scanner_rust::outbound::exif::write_exif_description;
+use photo_scanner_rust::outbound::exif::{get_exif_description, write_exif_description};
 use photo_scanner_rust::outbound::image_provider::resize_and_base64encode_image;
 use photo_scanner_rust::outbound::openai::OpenAI;
 use photo_scanner_rust::outbound::xmp::{extract_persons, write_xmp_description};
@@ -110,12 +110,38 @@ async fn main() -> Result<()> {
                 }
             };
 
+            // Check if the EXIF description already exists and skip the file if it does.
+            match get_exif_description(&path) {
+                Ok(Some(description)) => {
+                    info!(
+                        "Description already exists for {}: {}",
+                        path.display(),
+                        description
+                    );
+                    drop(permit);
+                    return;
+                }
+                Ok(None) => {
+                    // Continue code execution if there is no description
+                }
+                Err(e) => {
+                    error!(
+                        "Error getting EXIF description for {}: {}",
+                        path.display(),
+                        e
+                    );
+                    drop(permit);
+                    return;
+                }
+            }
+
             let start_time = Instant::now();
 
             let persons = match extract_persons(&path) {
                 Ok(persons) => persons,
                 Err(e) => {
                     error!("Error extracting persons from {}: {}", path.display(), e);
+                    drop(permit);
                     return;
                 }
             };
@@ -128,6 +154,7 @@ async fn main() -> Result<()> {
                         path.display(),
                         e
                     );
+                    drop(permit);
                     return;
                 }
             };
