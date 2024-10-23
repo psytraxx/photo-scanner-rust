@@ -15,7 +15,6 @@ use std::vec::Vec;
 const EMBEDDING_MODEL: &str = "mxbai-embed-large";
 const BASE_URL: &str = "http://localhost:11434/v1";
 const CHAT_MODEL: &str = "llava:13b";
-//const CHAT_MODEL: &str = "llava:7b-v1.6-mistral-q5_1";
 
 #[derive(Debug, Clone)]
 pub struct OpenAI {
@@ -69,7 +68,7 @@ impl Chat for OpenAI {
                     .build()?
                     .into(),
                 ChatCompletionRequestUserMessageArgs::default()
-                    .content("Ensure the description is concise, engaging, and not too long")
+                    .content("Ensure the description is concise and engaging. Limit the description to 2-3 sentences.")
                     .build()?
                     .into(),
                 ChatCompletionRequestUserMessageArgs::default()
@@ -146,7 +145,7 @@ fn process_openai_response(response: async_openai::types::CreateChatCompletionRe
         .iter()
         .filter_map(|c| {
             if c.message.role == Role::Assistant {
-                c.message.content.as_deref()
+                c.message.content.as_deref().map(|s| s.trim())
             } else {
                 None
             }

@@ -90,8 +90,7 @@ async fn main() -> Result<()> {
 
     while let Some(file_result) = files_stream.next().await {
         let path = match file_result {
-            Ok(path) if is_jpeg(&path) => path,
-            Ok(_) => continue, // Skip non-JPEG files.
+            Ok(path) => path,
             Err(e) => {
                 error!("Error: {}", e);
                 continue;
@@ -110,13 +109,18 @@ async fn main() -> Result<()> {
                 }
             };
 
+            if !is_jpeg(&path) {
+                drop(permit);
+                return;
+            }
+
             // Check if the EXIF description already exists and skip the file if it does.
             match get_exif_description(&path) {
                 Ok(Some(description)) => {
                     info!(
-                        "Description already exists for {}: {}",
-                        path.display(),
-                        description
+                        "Description \"{}\" exists for \"{}\"",
+                        &description,
+                        &path.display()
                     );
                     drop(permit);
                     return;
@@ -127,8 +131,8 @@ async fn main() -> Result<()> {
                 Err(e) => {
                     error!(
                         "Error getting EXIF description for {}: {}",
-                        path.display(),
-                        e
+                        &path.display(),
+                        &e
                     );
                     drop(permit);
                     return;
@@ -140,7 +144,7 @@ async fn main() -> Result<()> {
             let persons = match extract_persons(&path) {
                 Ok(persons) => persons,
                 Err(e) => {
-                    error!("Error extracting persons from {}: {}", path.display(), e);
+                    error!("Error extracting persons from {}: {}", &path.display(), &e);
                     drop(permit);
                     return;
                 }
@@ -151,8 +155,8 @@ async fn main() -> Result<()> {
                 Err(e) => {
                     error!(
                         "Error extracting image description from {}: {}",
-                        path.display(),
-                        e
+                        &path.display(),
+                        &e
                     );
                     drop(permit);
                     return;
@@ -161,9 +165,9 @@ async fn main() -> Result<()> {
 
             let duration = Instant::now() - start_time;
             info!(
-                "Description for {}: {} Time taken: {:.2} seconds, Persons: {:?}",
-                &path.display(),
+                "Generated \"{}\" for \"{}\", Time taken: {:.2} seconds, Persons: {:?}",
                 &description,
+                &path.display(),
                 duration.as_secs_f64(),
                 &persons
             );
