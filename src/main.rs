@@ -174,7 +174,7 @@ async fn main() -> Result<()> {
 
             /* if let Err(e) = chat.get_embedding(&description).await {
                 error!("Error getting embedding for {}: {}", &path.display(), e);
-            } */
+            }
 
             if let Err(e) = write_xmp_description(&description, &path) {
                 error!(
@@ -182,7 +182,7 @@ async fn main() -> Result<()> {
                     path.display(),
                     e
                 );
-            }
+            }*/
 
             if let Err(e) = write_exif_description(&description, &path) {
                 error!(

@@ -6,7 +6,7 @@ cargo run  /home/eric/Desktop/sizilien/
 
 validate files
     
-    exiftool -validate -warning -r /home/eric/Desktop/sizilien
+    exiftool -validate -warning -r /mnt/data/Photos/photos/2023/sizilien/
 
 remove a tag
     
@@ -18,11 +18,15 @@ update a tag
 
 copy tags
     
-    exiftool -tagsFromFile @ -all:all -icc_profile -overwrite_original -r /mnt/data/Photos/photos/
+    exiftool -all= -tagsfromfile @ -all:all -unsafe -overwrite_original -r /mnt/data/Photos/photos/2023/sizilien/
 
 remove all xpcomments
     
     exiftool -overwrite_original  -Exif:XPComment -r /mnt/data/Photos/photos/
+
+cleanup 
+
+    exiftool -overwrite_original -IFD0:ImageDescription= -Description= -xmp:description= -ExifIFD:MakerNotes= -iptc:Caption-Abstract= -ThumbnailImage= -r /mnt/data/Photos/photos/
 
 dump all xmp information
 

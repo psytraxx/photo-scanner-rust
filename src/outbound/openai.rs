@@ -94,11 +94,11 @@ impl Chat for OpenAI {
             messages.push(message.into());
         }
 
-        if folder_name.is_some() {
+        if let Some(folder) = folder_name {
             let message_content = format!(
-                "Use the folder {} as a hint where this photo was taken when generating the image summary",
-                folder_name.as_ref().unwrap()
-            );
+                    "Use the folder {} as a hint where this photo was taken when generating the image summary",
+                    folder
+                );
 
             let message = ChatCompletionRequestUserMessageArgs::default()
                 .content(message_content)
